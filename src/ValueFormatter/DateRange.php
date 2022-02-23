@@ -39,11 +39,18 @@ class DateRange implements ValueFormatterInterface
     public function format($value)
     {
         $matches = [];
-        if (preg_match('|^\s*(\d+)\s*[-/]\s*(\d+)\s*$|', $value, $matches)) {
+        if (preg_match("/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/", $value)) {
+            return $value;
+        } elseif (preg_match("/^[0-9]{4}-(0[1-9]|1[0-2])$/", $value)) {
+            return $value;
+        } elseif (preg_match('|^\s*(\d+)\s*[-/]\s*(\d+)\s*$|', $value, $matches)) {
             $start = $matches[1];
             $end = $matches[2];
+            if ($start > $end) {
+                return null;
+            }
         } elseif (preg_match('|^\s*(\d+)\s*$|', $value, $matches)) {
-            $start = $end = $matches[1];
+            return $value;
         }
 
         if (!isset($start) || !isset($end)) {

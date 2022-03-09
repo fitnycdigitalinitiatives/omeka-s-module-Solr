@@ -164,11 +164,14 @@ class ItemValueExtractor extends AbstractValueExtractor
         $extractedValue = [];
 
         foreach ($item->itemSets() as $itemSet) {
-            if ($field == 'id') {
-                $extractedValue[] = $itemSet->id();
-            } else {
-                $itemSetExtractedValue = $this->extractPropertyValue($itemSet, $field);
-                $extractedValue = array_merge($extractedValue, $itemSetExtractedValue);
+            // Only index the item set if it is public
+            if ($itemSet->isPublic()) {
+                if ($field == 'id') {
+                    $extractedValue[] = $itemSet->id();
+                } else {
+                    $itemSetExtractedValue = $this->extractPropertyValue($itemSet, $field);
+                    $extractedValue = array_merge($extractedValue, $itemSetExtractedValue);
+                }
             }
         }
 

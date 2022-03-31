@@ -189,6 +189,7 @@ return [
         'invokables' => [
             'date_range' => ValueFormatter\DateRange::class,
             'plain_text' => ValueFormatter\PlainText::class,
+            'remove-uri' => ValueFormatter\RemoveURI::class,
         ],
     ],
     'translator' => [

@@ -59,13 +59,19 @@ abstract class AbstractValueExtractor implements ValueExtractorInterface
         $extractedValue = [];
         $values = $representation->value($field, ['all' => true, 'default' => []]);
         foreach ($values as $i => $value) {
-            $type = $value->type();
-            if ($type === 'literal' || $type == 'uri') {
-                $extractedValue[] = (string) $value;
-            } elseif ('resource' === explode(':', $type)[0]) {
-                $resourceTitle = $value->valueResource()->displayTitle('');
-                if (!empty($resourceTitle)) {
-                    $extractedValue[] = $resourceTitle;
+            // Only index public values to be safe.
+            if ($value->isPublic()) {
+                $type = $value->type();
+                if ($type === 'literal') {
+                    $extractedValue[] = (string) $value;
+                } elseif ($type == 'uri') {
+                    // Extract both the label and the uri
+                    array_push($extractedValue, $value->value(), $value->uri());
+                } elseif ('resource' === explode(':', $type)[0]) {
+                    $resourceTitle = $value->valueResource()->displayTitle('');
+                    if (!empty($resourceTitle)) {
+                        $extractedValue[] = $resourceTitle;
+                    }
                 }
             }
         }

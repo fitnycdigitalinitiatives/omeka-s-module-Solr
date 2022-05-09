@@ -167,7 +167,14 @@ class Indexer extends AbstractIndexer
                     $value = $valueFormatter->format($value);
                 }
                 if ($value) {
-                    $document->addField($solrField, $value);
+                    // the date formatter splits date ranges into an array
+                    if (is_array($value)) {
+                        foreach ($value as $subvalue) {
+                            $document->addField($solrField, $subvalue);
+                        }
+                    } else {
+                        $document->addField($solrField, $value);
+                    }
                 }
             }
         }

@@ -187,6 +187,7 @@ return [
     ],
     'solr_value_formatters' => [
         'invokables' => [
+            'date_year' => ValueFormatter\DateYear::class,
             'date_range' => ValueFormatter\DateRange::class,
             'plain_text' => ValueFormatter\PlainText::class,
             'remove-uri' => ValueFormatter\RemoveURI::class,

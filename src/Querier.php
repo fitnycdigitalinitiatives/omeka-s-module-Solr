@@ -187,6 +187,14 @@ class Querier extends AbstractQuerier
             }
         }
 
+        $statFields = $query->getStatFields();
+        if (!empty($statFields)) {
+            $solrQuery->setStats(true);
+            foreach ($statFields as $statField) {
+                $solrQuery->addStatsField($statField);
+            }
+        }
+
         $sort = $query->getSort();
         if (isset($sort)) {
             list($sortField, $sortOrder) = explode(' ', $sort);
@@ -240,6 +248,11 @@ class Querier extends AbstractQuerier
                         $response->addFacetCount($searchField->name(), $value, $count);
                     }
                 }
+            }
+        }
+        if (!empty($solrResponse['stats']['stats_fields'])) {
+            foreach ($solrResponse['stats']['stats_fields'] as $name => $value) {
+                $response->addDateFacetStat($value);
             }
         }
 

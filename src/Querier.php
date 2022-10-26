@@ -382,7 +382,8 @@ class Querier extends AbstractQuerier
     {
         if (!$this->searchFields) {
             $api = $this->getServiceLocator()->get('Omeka\ApiManager');
-            $searchFields = $api->search('solr_search_fields')->getContent();
+            $solrNodeId = $this->getAdapterSetting('solr_node_id');
+            $searchFields = $api->search('solr_search_fields', ['solr_node_id' => $solrNodeId])->getContent();
             $this->searchFields = [];
             foreach ($searchFields as $searchField) {
                 $this->searchFields[$searchField->name()] = $searchField;

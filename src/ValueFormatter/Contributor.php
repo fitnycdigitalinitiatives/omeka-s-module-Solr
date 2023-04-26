@@ -16,7 +16,7 @@ class Contributor implements ValueFormatterInterface
     {
         if (filter_var($value, FILTER_VALIDATE_URL)) {
             return null;
-        } elseif (str_contains(strtolower($value), strtolower("Fashion Institute of Technology, State University of New York"))) {
+        } elseif (str_contains(strtolower($value), strtolower("Fashion Institute of Technology"))) {
             return null;
         } else {
             return $value;

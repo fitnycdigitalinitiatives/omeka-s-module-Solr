@@ -196,9 +196,7 @@ class Indexer extends AbstractIndexer
     {
         if (!isset($this->client)) {
             $solrNode = $this->getSolrNode();
-            $options = $solrNode->clientSettings();
-            $options["timeout"] = 60;
-            $this->client = new SolrClient($options);
+            $this->client = new SolrClient($solrNode->clientSettings());
         }
 
         return $this->client;

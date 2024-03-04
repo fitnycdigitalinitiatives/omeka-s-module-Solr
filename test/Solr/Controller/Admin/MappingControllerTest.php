@@ -1,12 +1,12 @@
 <?php
 
-namespace SolrTest\Controller\Admin;
+namespace Solr\Test\Controller\Admin;
 
-use SolrTest\Controller\SolrControllerTestCase;
+use Solr\Test\Controller\SolrControllerTestCase;
 
 class MappingControllerTest extends SolrControllerTestCase
 {
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
 

@@ -32,6 +32,8 @@ namespace Solr\ValueExtractor;
 use Omeka\Api\Manager as ApiManager;
 use Omeka\Api\Representation\ItemRepresentation;
 use Omeka\Api\Representation\AbstractResourceRepresentation;
+use Solr\Value\DateTimeValue;
+use Stringable;
 
 class ItemValueExtractor extends AbstractValueExtractor
 {
@@ -97,20 +99,21 @@ class ItemValueExtractor extends AbstractValueExtractor
         return $fields;
     }
 
-    public function extractValue(AbstractResourceRepresentation $item, $field)
+    public function extractValue(AbstractResourceRepresentation $item, $field, $settings): Stringable|array|string|int|float|bool
     {
-        $params = ['field' => $field, 'value' => null];
+        $params = ['field' => $field, 'settings' => $settings, 'value' => null];
         $params = $this->triggerEvent('solr.value_extractor.extract_value', $item, $params);
         if (isset($params['value'])) {
             return $params['value'];
         }
 
         if ($field === 'created') {
-            return $item->created();
+            return DateTimeValue::createFromInterface($item->created());
         }
 
         if ($field === 'modified') {
-            return $item->modified();
+            $modified = $item->modified();
+            return $modified ? DateTimeValue::createFromInterface($modified) : [];
         }
 
         if ($field === 'is_public') {
@@ -119,28 +122,28 @@ class ItemValueExtractor extends AbstractValueExtractor
 
         if ($field === 'resource_class') {
             $resourceClass = $item->resourceClass();
-            return $resourceClass ? $resourceClass->term() : null;
+            return $resourceClass ? $resourceClass->term() : [];
         }
 
         if ($field === 'resource_template') {
             $resourceTemplate = $item->resourceTemplate();
-            return $resourceTemplate ? $resourceTemplate->label() : null;
+            return $resourceTemplate ? $resourceTemplate->label() : [];
         }
 
         if (preg_match('/^media\/(.*)/', $field, $matches)) {
             $mediaField = $matches[1];
-            return $this->extractMediaValue($item, $mediaField);
+            return $this->extractMediaValue($item, $mediaField, $settings);
         }
 
         if (preg_match('/^item_set\/(.*)/', $field, $matches)) {
             $itemSetField = $matches[1];
-            return $this->extractItemSetValue($item, $itemSetField);
+            return $this->extractItemSetValue($item, $itemSetField, $settings);
         }
 
-        return $this->extractPropertyValue($item, $field);
+        return $item->value($field, ['all' => true, 'default' => []]);
     }
 
-    protected function extractMediaValue(ItemRepresentation $item, $field)
+    protected function extractMediaValue(ItemRepresentation $item, $field, array $settings)
     {
         $extractedValue = [];
 
@@ -151,7 +154,7 @@ class ItemValueExtractor extends AbstractValueExtractor
                 }
                 $mediaExtractedValue = [$media->mediaData()['html']];
             } else {
-                $mediaExtractedValue = $this->extractPropertyValue($media, $field);
+                $mediaExtractedValue = $media->value($field, ['all' => true, 'default' => []]);
             }
             $extractedValue = array_merge($extractedValue, $mediaExtractedValue);
         }
@@ -159,7 +162,7 @@ class ItemValueExtractor extends AbstractValueExtractor
         return $extractedValue;
     }
 
-    protected function extractItemSetValue(ItemRepresentation $item, $field)
+    protected function extractItemSetValue(ItemRepresentation $item, $field, array $settings)
     {
         $extractedValue = [];
 

@@ -1,21 +1,49 @@
 <?php
 
-require __DIR__ . '/../vendor/autoload.php';
+require dirname(dirname(dirname(__DIR__))) . '/bootstrap.php';
 
-use PHPUnit\Framework\ExpectationFailedException;
-use PHPUnit\Framework\TestCase;
+// Make sure error reporting is on for testing
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-if (! class_exists(ExpectationFailedException::class)) {
-    class_alias(\PHPUnit_Framework_ExpectationFailedException::class, ExpectationFailedException::class);
+// Install a fresh database.
+file_put_contents('php://stdout', "Dropping test database schema...\n");
+\Omeka\Test\DbTestCase::dropSchema();
+file_put_contents('php://stdout', "Creating test database schema...\n");
+\Omeka\Test\DbTestCase::installSchema();
+
+// Login as admin
+$application = \Omeka\Test\DbTestCase::getApplication();
+$serviceLocator = $application->getServiceManager();
+$auth = $serviceLocator->get('Omeka\AuthenticationService');
+$adapter = $auth->getAdapter();
+$adapter->setIdentity('admin@example.com');
+$adapter->setCredential('root');
+$auth->authenticate();
+
+$moduleName = 'Solr';
+
+// Enable Search and Solr modules
+$moduleManager = $serviceLocator->get('Omeka\ModuleManager');
+foreach (['Search', 'Solr'] as $name) {
+    $module = $moduleManager->getModule($name);
+    if ($module->getState() !== \Omeka\Module\Manager::STATE_ACTIVE) {
+        $moduleManager->install($module);
+    }
 }
 
-if (! class_exists(TestCase::class)) {
-    class_alias(\PHPUnit_Framework_TestCase::class, TestCase::class);
-}
+spl_autoload_register(function ($class) use ($moduleName) {
+    $prefix = "$moduleName\\Test\\";
+    $base_dir = __DIR__ . "/$moduleName/";
 
-use OmekaTestHelper\Bootstrap;
+    $len = strlen($prefix);
+    if (strncmp($prefix, $class, $len) !== 0) {
+        return;
+    }
 
-Bootstrap::bootstrap(__DIR__);
-Bootstrap::loginAsAdmin();
-Bootstrap::enableModule('Search');
-Bootstrap::enableModule('Solr');
+    $relative_class = substr($class, $len);
+    $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
+    if (file_exists($file)) {
+        require $file;
+    }
+});

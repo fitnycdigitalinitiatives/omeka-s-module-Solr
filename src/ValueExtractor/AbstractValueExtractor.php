@@ -29,7 +29,6 @@
 
 namespace Solr\ValueExtractor;
 
-use Omeka\Api\Representation\AbstractResourceEntityRepresentation;
 use Laminas\EventManager\Event;
 use Laminas\EventManager\EventManagerAwareTrait;
 
@@ -45,38 +44,5 @@ abstract class AbstractValueExtractor implements ValueExtractorInterface
         $events->triggerEvent($event);
 
         return $params;
-    }
-
-    /**
-     * Extract the values of the given property of the given resource
-     * If the value is a resource, then its title is used.
-     * @param AbstractResourceEntityRepresentation $representation Item
-     * @param string $field Property (RDF term).
-     * @return string[] Human-readable values.
-     */
-    protected function extractPropertyValue(AbstractResourceEntityRepresentation $representation, $field)
-    {
-        $extractedValue = [];
-        $values = $representation->value($field, ['all' => true, 'default' => []]);
-        foreach ($values as $i => $value) {
-            // Only index public values to be safe.
-            if ($value->isPublic()) {
-                $resource = $value->valueResource();
-                $uri = $value->uri();
-                if ($resource) {
-                    $resourceTitle = $value->valueResource()->displayTitle('');
-                    if (!empty($resourceTitle)) {
-                        $extractedValue[] = $resourceTitle;
-                    }
-                } elseif ($uri) {
-                    // Extract both the label and the uri
-                    array_push($extractedValue, $value->value(), $value->uri());
-                } else {
-                    $extractedValue[] = $value->value();
-                }
-            }
-        }
-
-        return $extractedValue;
     }
 }

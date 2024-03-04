@@ -29,30 +29,24 @@
 
 namespace Solr\Form\Admin;
 
+use Laminas\Form\Element\Select;
 use Laminas\Form\Fieldset;
 use Laminas\Form\Form;
-use Laminas\I18n\Translator\TranslatorAwareInterface;
-use Laminas\I18n\Translator\TranslatorAwareTrait;
+use Solr\Form\Element\Transformations;
 use Solr\ValueExtractor\Manager as ValueExtractorManager;
-use Solr\ValueFormatter\Manager as ValueFormatterManager;
 
-class SolrMappingForm extends Form implements TranslatorAwareInterface
+class SolrMappingForm extends Form
 {
-    use TranslatorAwareTrait;
-
     protected $valueExtractorManager;
-    protected $valueFormatterManager;
-    protected $apiManager;
+    protected $transformationManager;
 
     public function init()
     {
-        $translator = $this->getTranslator();
-
         $this->add([
             'name' => 'o:source',
-            'type' => 'Select',
+            'type' => Select::class,
             'options' => [
-                'label' => $translator->translate('Source'),
+                'label' => 'Source', // @translate
                 'value_options' => $this->getSourceOptions(),
             ],
             'attributes' => [
@@ -64,7 +58,7 @@ class SolrMappingForm extends Form implements TranslatorAwareInterface
             'name' => 'o:field_name',
             'type' => 'Text',
             'options' => [
-                'label' => $translator->translate('Solr field'),
+                'label' => 'Solr field', // @translate
             ],
             'attributes' => [
                 'required' => true,
@@ -72,14 +66,28 @@ class SolrMappingForm extends Form implements TranslatorAwareInterface
         ]);
 
         $settingsFieldset = new Fieldset('o:settings');
+
+        $transformationNames = $this->transformationManager->getRegisteredNames($sortAlpha = true);
+        $transformationValueOptions = [];
+        foreach ($transformationNames as $name) {
+            $transformation = $this->transformationManager->get($name);
+            $transformationValueOptions[] = [
+                'value' => $name,
+                'label' => $transformation->getLabel(),
+            ];
+        }
+
         $settingsFieldset->add([
-            'name' => 'formatter',
-            'type' => 'Select',
+            'name' => 'transformations',
+            'type' => Transformations::class,
             'options' => [
-                'label' => $translator->translate('Formatter'),
-                'value_options' => $this->getFormatterOptions(),
+                'label' => 'Transformations', // @translate
+                'value_options' => $transformationValueOptions,
+                'empty_option' => '',
+                'solr_mapping_id' => $this->getOption('solr_mapping_id'),
             ],
         ]);
+
         $this->add($settingsFieldset);
     }
 
@@ -93,24 +101,14 @@ class SolrMappingForm extends Form implements TranslatorAwareInterface
         return $this->valueExtractorManager;
     }
 
-    public function setValueFormatterManager(ValueFormatterManager $valueFormatterManager)
+    public function setTransformationManager(\Solr\Transformation\Manager $transformationManager)
     {
-        $this->valueFormatterManager = $valueFormatterManager;
+        $this->transformationManager = $transformationManager;
     }
 
-    public function getValueFormatterManager()
+    public function getTransformationManager(): \Solr\Transformation\Manager
     {
-        return $this->valueFormatterManager;
-    }
-
-    public function setApiManager($apiManager)
-    {
-        $this->apiManager = $apiManager;
-    }
-
-    public function getApiManager()
-    {
-        return $this->apiManager;
+        return $this->transformationManager;
     }
 
     protected function getSourceOptions()
@@ -150,23 +148,6 @@ class SolrMappingForm extends Form implements TranslatorAwareInterface
                     $options[$value] = $label;
                 }
             }
-        }
-
-        return $options;
-    }
-
-    protected function getFormatterOptions()
-    {
-        $valueFormatterManager = $this->getValueFormatterManager();
-
-        // TODO Find a way to tell Laminas to accept empty values
-        $options = [
-            '0' => $this->getTranslator()->translate('None'),
-        ];
-
-        foreach ($valueFormatterManager->getRegisteredNames() as $name) {
-            $valueFormatter = $valueFormatterManager->get($name);
-            $options[$name] = $valueFormatter->getLabel();
         }
 
         return $options;

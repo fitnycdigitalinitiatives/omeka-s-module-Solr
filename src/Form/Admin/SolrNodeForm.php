@@ -29,13 +29,13 @@
 
 namespace Solr\Form\Admin;
 
+use Laminas\Form\Element\Text;
 use Laminas\Form\Fieldset;
 use Laminas\Form\Form;
 use Laminas\I18n\Translator\TranslatorAwareInterface;
 use Laminas\I18n\Translator\TranslatorAwareTrait;
-use Laminas\InputFilter\InputFilterProviderInterface;
 
-class SolrNodeForm extends Form implements TranslatorAwareInterface, InputFilterProviderInterface
+class SolrNodeForm extends Form implements TranslatorAwareInterface
 {
     use TranslatorAwareTrait;
 
@@ -87,6 +87,24 @@ class SolrNodeForm extends Form implements TranslatorAwareInterface, InputFilter
             ],
             'attributes' => [
                 'required' => true,
+            ],
+        ]);
+
+        $clientSettingsFieldset->add([
+            'name' => 'login',
+            'type' => 'Text',
+            'options' => [
+                'label' => 'Username', // @translate
+                'info' => 'The username used for HTTP Authentication, if any', // @translate
+            ],
+        ]);
+
+        $clientSettingsFieldset->add([
+            'name' => 'password',
+            'type' => 'Text',
+            'options' => [
+                'label' => 'Password', // @translate
+                'info' => 'The HTTP Authentication password', // @translate
             ],
         ]);
 
@@ -146,18 +164,77 @@ class SolrNodeForm extends Form implements TranslatorAwareInterface, InputFilter
             ],
         ]);
 
-        $this->add($settingsFieldset);
-    }
+        $settingsFieldset->add([
+            'name' => 'highlight',
+            'type' => Fieldset::class,
+            'options' => [
+                'label' => 'Highlighting', // @translate
+            ],
+        ]);
+        $highlightFieldset = $settingsFieldset->get('highlight');
 
-    public function getInputFilterSpecification()
-    {
-        return [
-            'qf' => [
-                'required' => false,
+        $highlightFieldset->add([
+            'name' => 'highlighting',
+            'type' => 'checkbox',
+            'options' => [
+                'label' => $translator->translate('Highlighting'),
+                'info' => $translator->translate('Enable extract retrieval in relation to search terms'),
             ],
-            'mm' => [
-                'required' => false,
+        ]);
+
+        $highlightFieldset->add([
+            'name' => 'fields',
+            'type' => 'Text',
+            'options' => [
+                'label' => $translator->translate('Highlight fields'),
+                'info' => $translator->translate('Fields used for highligthing feature (use "*" for all fields).'),
             ],
-        ];
+        ]);
+
+        $highlightFieldset->add([
+            'name' => 'fragsize',
+            'type' => 'Number',
+            'options' => [
+                'label' => $translator->translate('Highlight fragment size'),
+                'info' => $translator->translate('Define number of caracters for the fragment size of highlight, 0 will show the entire field value.'),
+            ],
+        ]);
+
+        $highlightFieldset->add([
+            'name' => 'snippets',
+            'type' => 'Number',
+            'options' => [
+                'label' => $translator->translate('Highlight snippets'),
+                'info' => $translator->translate('Define the number of fragments where the search terms were found in the same field.'),
+            ],
+        ]);
+
+        $highlightFieldset->add([
+            'name' => 'maxAnalyzedChars',
+            'type' => Text::class,
+            'options' => [
+                'label' => 'Maximum characters analyzed', // @translate
+                'info' => 'Set the value of hl.maxAnalyzedChars parameter. Great values can have impact on performance', // @translate
+            ],
+        ]);
+
+        $this->add($settingsFieldset);
+
+        $inputFilter = $this->getInputFilter();
+        $settingsInputFilter = $inputFilter->get('o:settings');
+        $highlightInputFilter = $settingsInputFilter->get('highlight');
+
+        $highlightInputFilter->add([
+            'name' => 'highlighting',
+            'required' => false,
+        ]);
+        $highlightInputFilter->add([
+            'name' => 'fragsize',
+            'required' => false,
+        ]);
+        $highlightInputFilter->add([
+            'name' => 'snippets',
+            'required' => false,
+        ]);
     }
 }

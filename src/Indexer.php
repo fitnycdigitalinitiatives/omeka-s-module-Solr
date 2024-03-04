@@ -34,6 +34,7 @@ use SolrInputDocument;
 use SolrServerException;
 use Omeka\Entity\Resource;
 use Search\Indexer\AbstractIndexer;
+use Stringable;
 
 class Indexer extends AbstractIndexer
 {
@@ -52,18 +53,21 @@ class Indexer extends AbstractIndexer
     public function clearIndex()
     {
         $client = $this->getClient();
+        $client->ping();
         $client->deleteByQuery('*:*');
         $client->commit();
     }
 
     public function indexResource(Resource $resource)
     {
+        $this->getClient()->ping();
         $this->addResource($resource);
         $this->commit();
     }
 
     public function indexResources(array $resources)
     {
+        $this->getClient()->ping();
         foreach ($resources as $resource) {
             $this->addResource($resource);
         }
@@ -72,8 +76,10 @@ class Indexer extends AbstractIndexer
 
     public function deleteResource($resourceName, $resourceId)
     {
+        $client = $this->getClient();
+        $client->ping();
         $id = $this->getDocumentId($resourceName, $resourceId);
-        $this->getClient()->deleteById($id);
+        $client->deleteById($id);
         $this->commit();
     }
 
@@ -88,7 +94,7 @@ class Indexer extends AbstractIndexer
         $api = $serviceLocator->get('Omeka\ApiManager');
         $settings = $serviceLocator->get('Omeka\Settings');
         $valueExtractorManager = $serviceLocator->get('Solr\ValueExtractorManager');
-        $valueFormatterManager = $serviceLocator->get('Solr\ValueFormatterManager');
+        $transformationManager = $serviceLocator->get('Solr\TransformationManager');
         $entityManager = $serviceLocator->get('Omeka\EntityManager');
 
         $resource = $api->read($resource->getResourceName(), $resource->getId())->getContent();
@@ -146,22 +152,26 @@ class Indexer extends AbstractIndexer
         foreach ($solrMappings as $solrMapping) {
             $solrField = $solrMapping->fieldName();
             $source = $solrMapping->source();
-            $values = $valueExtractor->extractValue($resource, $source);
+            $solrMappingSettings = $solrMapping->settings();
+            $values = $valueExtractor->extractValue($resource, $source, $solrMappingSettings);
 
             if (!is_array($values)) {
-                $values = (array) $values;
+                $values = [$values];
             }
+
+            $transformations = $solrMappingSettings['transformations'] ?? [];
+            foreach ($transformations as $transformationData) {
+                $transformation = $transformationManager->get($transformationData['name']);
+                $values = $transformation->transform($values, $transformationData);
+            }
+
+            $values = array_filter($values, fn($v) => is_scalar($v) || $v instanceof Stringable);
 
             $schemaField = $schema->getField($solrField);
             if (!$schemaField->isMultivalued()) {
                 $values = array_slice($values, 0, 1);
             }
 
-            $solrMappingSettings = $solrMapping->settings();
-            $formatter = $solrMappingSettings['formatter'];
-            if ($formatter) {
-                $valueFormatter = $valueFormatterManager->get($formatter);
-            }
             foreach ($values as $value) {
                 if ($formatter && $valueFormatter) {
                     $value = $valueFormatter->format($value);

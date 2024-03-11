@@ -139,8 +139,8 @@ class ItemValueExtractor extends AbstractValueExtractor
             $itemSetField = $matches[1];
             return $this->extractItemSetValue($item, $itemSetField, $settings);
         }
-
-        return $item->value($field, ['all' => true, 'default' => []]);
+        // Only return public values
+        return array_filter($item->value($field, ['all' => true, 'default' => []]), fn($v) => $v->isPublic());
     }
 
     protected function extractMediaValue(ItemRepresentation $item, $field, array $settings)
@@ -172,7 +172,7 @@ class ItemValueExtractor extends AbstractValueExtractor
                 if ($field == 'id') {
                     $extractedValue[] = $itemSet->id();
                 } else {
-                    $itemSetExtractedValue = $this->extractPropertyValue($itemSet, $field);
+                    $itemSetExtractedValue = $itemSet->value($field, ['all' => true, 'default' => []]);
                     $extractedValue = array_merge($extractedValue, $itemSetExtractedValue);
                 }
             }

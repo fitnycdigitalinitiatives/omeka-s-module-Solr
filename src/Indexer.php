@@ -92,7 +92,6 @@ class Indexer extends AbstractIndexer
     {
         $serviceLocator = $this->getServiceLocator();
         $api = $serviceLocator->get('Omeka\ApiManager');
-        $settings = $serviceLocator->get('Omeka\Settings');
         $valueExtractorManager = $serviceLocator->get('Solr\ValueExtractorManager');
         $transformationManager = $serviceLocator->get('Solr\TransformationManager');
         $entityManager = $serviceLocator->get('Omeka\EntityManager');
@@ -173,19 +172,7 @@ class Indexer extends AbstractIndexer
             }
 
             foreach ($values as $value) {
-                if ($formatter && $valueFormatter) {
-                    $value = $valueFormatter->format($value);
-                }
-                if ($value) {
-                    // the date formatter splits date ranges into an array
-                    if (is_array($value)) {
-                        foreach ($value as $subvalue) {
-                            $document->addField($solrField, $subvalue);
-                        }
-                    } else {
-                        $document->addField($solrField, $value);
-                    }
-                }
+                $document->addField($solrField, (string) $value);
             }
         }
 

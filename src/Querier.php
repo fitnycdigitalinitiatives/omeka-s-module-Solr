@@ -296,6 +296,12 @@ class Querier extends AbstractQuerier
             }
         }
 
+        if (!empty($solrResponse['stats']['stats_fields'])) {
+            foreach ($solrResponse['stats']['stats_fields'] as $name => $value) {
+                $response->addDateFacetStat($value);
+            }
+        }
+
         return $response;
     }
 
@@ -332,7 +338,9 @@ class Querier extends AbstractQuerier
     protected function getQueryStringFromSearchQuery($q)
     {
         if (is_string($q)) {
-            return $this->escape($q);
+            // return $this->escape($q);
+            // the query is already escaped in the search form and additional escaping prevents uri from being searched
+            return $q;
         }
 
         if (is_array($q) && isset($q['match']) && !empty($q['queries'])) {
@@ -426,7 +434,8 @@ class Querier extends AbstractQuerier
     {
         if (!$this->searchFields) {
             $api = $this->getServiceLocator()->get('Omeka\ApiManager');
-            $searchFields = $api->search('solr_search_fields')->getContent();
+            $solrNodeId = $this->getAdapterSetting('solr_node_id');
+            $searchFields = $api->search('solr_search_fields', ['solr_node_id' => $solrNodeId])->getContent();
             $this->searchFields = [];
             foreach ($searchFields as $searchField) {
                 $name = trim($searchField->name());

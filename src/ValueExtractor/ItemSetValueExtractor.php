@@ -84,7 +84,7 @@ class ItemSetValueExtractor extends AbstractValueExtractor
         return $fields;
     }
 
-    public function extractValue(AbstractResourceRepresentation $itemSet, $field, array $settings): Stringable | array | string | int | float | bool
+    public function extractValue(AbstractResourceRepresentation $itemSet, $field, array $settings): Stringable|array|string|int|float|bool
     {
         $params = ['field' => $field, 'settings' => $settings, 'value' => null];
         $params = $this->triggerEvent('solr.value_extractor.extract_value', $itemSet, $params);
@@ -118,7 +118,7 @@ class ItemSetValueExtractor extends AbstractValueExtractor
             $resourceTemplate = $itemSet->resourceTemplate();
             return $resourceTemplate ? $resourceTemplate->label() : null;
         }
-
-        return $itemSet->value($field, ['all' => true, 'default' => []]);
+        // Only return public values
+        return array_filter($itemSet->value($field, ['all' => true, 'default' => []]), fn($v) => $v->isPublic());
     }
 }

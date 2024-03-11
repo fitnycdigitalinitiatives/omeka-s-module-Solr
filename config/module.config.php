@@ -213,6 +213,9 @@ return [
             'Solr\Transformation\ConvertResourceToString' => Transformation\ConvertResourceToString::class,
             'Solr\Transformation\ConvertToSolrDateRange' => Transformation\ConvertToSolrDateRange::class,
             'Solr\Transformation\StripHtmlTags' => Transformation\StripHtmlTags::class,
+            'Solr\Transformation\IndexURI' => Transformation\IndexURI::class,
+            'Solr\Transformation\DateYear' => Transformation\DateYear::class,
+            'Solr\Transformation\ContributorFashion' => Transformation\ContributorFashion::class,
         ],
     ],
     'solr_value_extractors' => [
@@ -222,13 +225,6 @@ return [
         ],
     ],
     'solr_value_formatters' => [
-        'invokables' => [
-            'date_year' => ValueFormatter\DateYear::class,
-            'date_range' => ValueFormatter\DateRange::class,
-            'plain_text' => ValueFormatter\PlainText::class,
-            'remove-uri' => ValueFormatter\RemoveURI::class,
-            'contributor' => ValueFormatter\Contributor::class,
-        ],
     ],
     'translator' => [
         'translation_file_patterns' => [

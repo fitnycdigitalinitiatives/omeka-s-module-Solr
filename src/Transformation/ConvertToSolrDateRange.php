@@ -35,14 +35,18 @@ class ConvertToSolrDateRange extends AbstractTransformation
 
             $start = $end = null;
             $matches = [];
-            if (preg_match('|^\s*(\d+)\s*[-/]\s*(\d+)\s*$|', $stringValue, $matches)) {
+            if (preg_match("/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/", $stringValue)) {
+                $transformedValues[] = $stringValue;
+            } elseif (preg_match("/^[0-9]{4}-(0[1-9]|1[0-2])$/", $stringValue)) {
+                $transformedValues[] = $stringValue;
+            } elseif (preg_match('|^\s*(\d+)\s*[-/]\s*(\d+)\s*$|', $stringValue, $matches)) {
                 $start = $matches[1];
                 $end = $matches[2];
-            } elseif (preg_match('|^\s*(\d+)\s*$|', $stringValue, $matches)) {
-                $start = $end = $matches[1];
+            } elseif (preg_match('|^\s*(\d+)\s*$|', $stringValue)) {
+                $transformedValues[] = $value;
             }
 
-            if (isset($start) && isset($end)) {
+            if (isset($start) && isset($end) && ($start <= $end)) {
                 $transformedValues[] = "[$start TO $end]";
             } elseif (!$exclude_unmatching) {
                 $transformedValues[] = $value;

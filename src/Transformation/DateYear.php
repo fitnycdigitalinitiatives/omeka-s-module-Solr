@@ -24,7 +24,8 @@ class DateYear extends AbstractTransformation
                 $start = $matches[1];
                 $end = $matches[2];
                 if ($start > $end) {
-                    return null;
+                    // Just use the first value because there's probably an error
+                    $transformedValues[] = $start;
                 }
             } elseif (preg_match('|^\s*(\d+)\s*$|', $stringValue)) {
                 $transformedValues[] = $stringValue;

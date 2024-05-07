@@ -39,6 +39,9 @@ use Search\Response;
 
 class Querier extends AbstractQuerier
 {
+    const SOLR_SPECIAL_CHARS = ['+', '-', '&', '|', '!', '(', ')', '{', '}', '[', ']', '^', '"', '~', '*', '?', ':', '/'];
+    const PCRE_SPECIAL_CHARS = ['.', '\\', '+', '*', '?', '[', '^', ']', '$', '(', ')', '{', '}', '=', '!', '<', '>', '|', ':', '-', '#'];
+
     protected $client;
     protected $solrNode;
 
@@ -49,6 +52,7 @@ class Querier extends AbstractQuerier
         $serviceLocator = $this->getServiceLocator();
         $settings = $serviceLocator->get('Omeka\Settings');
         $api = $serviceLocator->get('Omeka\ApiManager');
+        $logger = $serviceLocator->get('Omeka\Logger');
 
         $client = $this->getClient();
 
@@ -57,6 +61,9 @@ class Querier extends AbstractQuerier
         $resource_name_field = $solrNodeSettings['resource_name_field'];
         $sites_field = $solrNodeSettings['sites_field'];
         $is_public_field = $solrNodeSettings['is_public_field'];
+        $highlightSettings = $solrNodeSettings['highlight'] ?? [];
+        $highlighting = $highlightSettings['highlighting'] ?? false;
+        $highlightQueryParts = [];
 
         $solrQuery = new SolrQuery;
         $solrQuery->setParam('defType', 'edismax');
@@ -93,9 +100,13 @@ class Querier extends AbstractQuerier
 
         $q = $query->getQuery();
         $q = $this->getQueryStringFromSearchQuery($q);
+
         if (empty($q)) {
             $q = '*:*';
+        } else {
+            $highlightQueryParts[] = $q;
         }
+
         $solrQuery->setQuery($q);
         $solrQuery->addField('id');
 
@@ -175,6 +186,7 @@ class Querier extends AbstractQuerier
             $fq = $this->getQueryStringFromSearchQuery($queryFilter);
             if (!empty($fq)) {
                 $solrQuery->addFilterQuery($fq);
+                $highlightQueryParts[] = $fq;
             }
         }
 
@@ -195,9 +207,41 @@ class Querier extends AbstractQuerier
             }
         }
 
+        if ($highlighting) {
+            $solrQuery->setHighlight(true);
+            $solrQuery->setHighlightSimplePre('<mark>');
+            $solrQuery->setHighlightSimplePost('</mark>');
+
+            $highlight_fragsize = $highlightSettings['fragsize'] ?? '';
+            if (is_numeric($highlight_fragsize)) {
+                $solrQuery->setHighlightFragsize($highlight_fragsize);
+            }
+
+            $highlight_snippets = $highlightSettings['snippets'] ?? '';
+            if (is_numeric($highlight_snippets)) {
+                $solrQuery->setHighlightSnippets($highlight_snippets);
+            }
+
+            $highlight_maxAnalyzedChars = $highlightSettings['maxAnalyzedChars'] ?? '';
+            if (is_numeric($highlight_maxAnalyzedChars)) {
+                $solrQuery->setParam('hl.maxAnalyzedChars', $highlight_maxAnalyzedChars);
+            }
+
+            if (!empty($highlightQueryParts)) {
+                $highlight_query = implode(' AND ', array_map(fn($part) => "($part)", $highlightQueryParts));
+                $solrQuery->setParam('hl.q', $highlight_query);
+            }
+
+            $highlight_fields = $highlightSettings['fields'] ?? '';
+            if (!empty($highlight_fields)) {
+                $highlight_fields = str_replace(' ', ',', $highlight_fields);
+                $solrQuery->setParam('hl.fl', $highlight_fields);
+            }
+        }
+
         $sort = $query->getSort();
         if (isset($sort)) {
-            list($sortField, $sortOrder) = explode(' ', $sort);
+            [$sortField, $sortOrder] = explode(' ', $sort);
             $sortOrder = $sortOrder == 'asc' ? SolrQuery::ORDER_ASC : SolrQuery::ORDER_DESC;
 
             if ($sortField !== 'score') {
@@ -224,6 +268,7 @@ class Querier extends AbstractQuerier
         }
 
         try {
+            $logger->debug(sprintf('Solr query params: %s', $solrQuery->toString()));
             $solrQueryResponse = $client->query($solrQuery);
         } catch (SolrClientException $e) {
             throw new QuerierException($e->getMessage(), $e->getCode(), $e);
@@ -235,7 +280,7 @@ class Querier extends AbstractQuerier
         foreach ($solrResponse['grouped'][$resource_name_field]['groups'] as $group) {
             $response->setResourceTotalResults($group['groupValue'], $group['doclist']['numFound']);
             foreach ($group['doclist']['docs'] as $doc) {
-                list(, $resourceId) = explode(':', $doc['id']);
+                [, $resourceId] = explode(':', $doc['id']);
                 $response->addResult($group['groupValue'], ['id' => $resourceId]);
             }
         }
@@ -250,6 +295,7 @@ class Querier extends AbstractQuerier
                 }
             }
         }
+
         if (!empty($solrResponse['stats']['stats_fields'])) {
             foreach ($solrResponse['stats']['stats_fields'] as $name => $value) {
                 $response->addDateFacetStat($value);
@@ -292,6 +338,8 @@ class Querier extends AbstractQuerier
     protected function getQueryStringFromSearchQuery($q)
     {
         if (is_string($q)) {
+            // return $this->escape($q);
+            // the query is already escaped in the search form and additional escaping prevents uri from being searched
             return $q;
         }
 
@@ -332,10 +380,14 @@ class Querier extends AbstractQuerier
                     }
 
                     $term = $this->escape($q['term']);
-                    $words = explode(' ', $term);
-                    $term = implode(' ', array_map(function ($word) {
-                        return "+$word";
-                    }, $words));
+                    if (isset($q['proximity']) && is_numeric($q['proximity'])) {
+                        $term = sprintf('+"%s" ~%s', $term, $q['proximity']);
+                    } else {
+                        $words = explode(' ', $term);
+                        $term = implode(' ', array_map(function ($word) {
+                            return "+$word";
+                        }, $words));
+                    }
                     break;
 
                 case Adapter::OPERATOR_CONTAINS_EXPR:
@@ -386,7 +438,8 @@ class Querier extends AbstractQuerier
             $searchFields = $api->search('solr_search_fields', ['solr_node_id' => $solrNodeId])->getContent();
             $this->searchFields = [];
             foreach ($searchFields as $searchField) {
-                $this->searchFields[$searchField->name()] = $searchField;
+                $name = trim($searchField->name());
+                $this->searchFields[$name] = $searchField;
             }
         }
 
@@ -402,11 +455,20 @@ class Querier extends AbstractQuerier
 
     protected function escape($string)
     {
-        return preg_replace('/([+\-&|!(){}[\]\^"~*?:])/', '\\\\$1', $string);
+        return $this->escapeChars(self::SOLR_SPECIAL_CHARS, $string);
     }
 
     protected function escapeRegexp($string)
     {
-        return preg_quote($string, '/');
+        $charsToEscape = array_unique(array_merge(self::SOLR_SPECIAL_CHARS, self::PCRE_SPECIAL_CHARS));
+        return $this->escapeChars($charsToEscape, $string);
+    }
+
+    protected function escapeChars($charsToEscape, $string)
+    {
+        $pattern = '/([' . implode('', array_map(function ($c) {
+            return preg_quote($c, '/');
+        }, $charsToEscape)) . '])/';
+        return preg_replace($pattern, '\\\\$1', $string);
     }
 }

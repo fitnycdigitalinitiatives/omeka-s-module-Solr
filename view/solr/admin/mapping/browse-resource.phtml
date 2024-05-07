@@ -55,6 +55,15 @@
 </nav>
 
 <?php if (count($mappings) > 0): ?>
+    <div class="browse-controls">
+        <?= $this->pagination(); ?>
+        <?php $sortBy = [
+            ['value' => 'field_name', 'label' => $this->translate('Solr field')],
+            ['value' => 'source', 'label' => $this->translate('Source')],
+        ] ?>
+        <?= $this->sortSelector($sortBy); ?>
+    </div>
+
     <table class="tablesaw" data-tablesaw-mode="stack">
         <thead>
             <tr>
@@ -84,6 +93,12 @@
                                 aria-label="<?php echo $escape($this->translate('Delete')); ?>"
                                 title="<?php echo $escape($this->translate('Delete')); ?>"></a>
                             </li>
+                           <li><?php echo $this->hyperlink('', '#', [
+                                'data-sidebar-selector' => '#sidebar',
+                                'data-sidebar-content-url' => $mapping->url('show-details'),
+                                'class' => 'o-icon-more sidebar-content',
+                                'title' => $this->translate('Details'),
+                            ]); ?></li>
                         </ul>
                     </td>
                     <td><?php echo $mapping->source(); ?></td>
@@ -98,7 +113,7 @@
     </p>
 <?php endif; ?>
 
-<div class="sidebar">
+<div id="sidebar" class="sidebar">
     <a href="#"
         class="sidebar-close o-icon-close"
         aria-label="<?php echo $escape($this->translate('Close')); ?>"

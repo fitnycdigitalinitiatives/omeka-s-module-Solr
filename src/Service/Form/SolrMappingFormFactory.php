@@ -10,15 +10,11 @@ class SolrMappingFormFactory implements FactoryInterface
     public function __invoke(ContainerInterface $services, $requestedName, array $options = null)
     {
         $valueExtractorManager = $services->get('Solr\ValueExtractorManager');
-        $valueFormatterManager = $services->get('Solr\ValueFormatterManager');
-        $api = $services->get('Omeka\ApiManager');
-        $translator = $services->get('MvcTranslator');
+        $transformationManager = $services->get('Solr\TransformationManager');
 
         $form = new SolrMappingForm(null, $options);
-        $form->setTranslator($translator);
         $form->setValueExtractorManager($valueExtractorManager);
-        $form->setValueFormatterManager($valueFormatterManager);
-        $form->setApiManager($api);
+        $form->setTransformationManager($transformationManager);
 
         return $form;
     }

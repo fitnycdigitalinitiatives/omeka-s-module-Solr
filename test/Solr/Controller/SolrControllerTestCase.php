@@ -1,17 +1,17 @@
 <?php
 
-namespace SolrTest\Controller;
+namespace Solr\Test\Controller;
 
-use OmekaTestHelper\Controller\OmekaControllerTestCase;
+use Solr\Test\TestCase;
 
-abstract class SolrControllerTestCase extends OmekaControllerTestCase
+abstract class SolrControllerTestCase extends TestCase
 {
     protected $solrNode;
     protected $solrMapping;
     protected $searchIndex;
     protected $searchPage;
 
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
 
@@ -75,11 +75,36 @@ abstract class SolrControllerTestCase extends OmekaControllerTestCase
         $this->searchPage = $searchPage;
     }
 
-    public function tearDown()
+    public function tearDown(): void
     {
         $this->api()->delete('search_pages', $this->searchPage->id());
         $this->api()->delete('search_indexes', $this->searchIndex->id());
         $this->api()->delete('solr_mappings', $this->solrMapping->id());
         $this->api()->delete('solr_nodes', $this->solrNode->id());
+    }
+
+    protected function login($email, $password)
+    {
+        $serviceLocator = $this->getServiceLocator();
+        $auth = $serviceLocator->get('Omeka\AuthenticationService');
+        $adapter = $auth->getAdapter();
+        $adapter->setIdentity($email);
+        $adapter->setCredential($password);
+        return $auth->authenticate();
+    }
+
+    protected function loginAsAdmin()
+    {
+        $this->login('admin@example.com', 'root');
+    }
+
+    protected function getServiceLocator()
+    {
+        return $this->getApplication()->getServiceManager();
+    }
+
+    protected function api()
+    {
+        return $this->getServiceLocator()->get('Omeka\ApiManager');
     }
 }

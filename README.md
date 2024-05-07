@@ -4,14 +4,16 @@ This module provides a [Search](https://github.com/biblibre/omeka-s-module-Searc
 
 Module has been forked to work with Auto Commits in solrconfig.xml. For example:
 
-`<autoCommit>
+```
+<autoCommit>
     <maxTime>${solr.autoCommit.maxTime:15000}</maxTime>
     <openSearcher>false</openSearcher>
 </autoCommit>
 
 <autoSoftCommit>
     <maxTime>${solr.autoSoftCommit.maxTime:600000}</maxTime>
-</autoSoftCommit>`
+</autoSoftCommit>
+```
 
 ## Requirements
 

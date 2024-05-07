@@ -2,6 +2,17 @@
 
 This module provides a [Search](https://github.com/biblibre/omeka-s-module-Search) adapter for [Solr](https://lucene.apache.org/solr/).
 
+Module has been forked to work with Auto Commits in solrconfig.xml. For example:
+
+`<autoCommit>
+    <maxTime>${solr.autoCommit.maxTime:15000}</maxTime>
+    <openSearcher>false</openSearcher>
+</autoCommit>
+
+<autoSoftCommit>
+    <maxTime>${solr.autoSoftCommit.maxTime:600000}</maxTime>
+</autoSoftCommit>`
+
 ## Requirements
 
 - PHP >= 8.0

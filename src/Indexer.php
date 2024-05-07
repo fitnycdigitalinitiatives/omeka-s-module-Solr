@@ -62,7 +62,8 @@ class Indexer extends AbstractIndexer
     {
         $this->getClient()->ping();
         $this->addResource($resource);
-        $this->commit();
+        // autocommit is turned on
+        // $this->commit();
     }
 
     public function indexResources(array $resources)
@@ -71,7 +72,8 @@ class Indexer extends AbstractIndexer
         foreach ($resources as $resource) {
             $this->addResource($resource);
         }
-        $this->commit();
+        // autocommit is turned on
+        // $this->commit();
     }
 
     public function deleteResource($resourceName, $resourceId)
@@ -80,7 +82,8 @@ class Indexer extends AbstractIndexer
         $client->ping();
         $id = $this->getDocumentId($resourceName, $resourceId);
         $client->deleteById($id);
-        $this->commit();
+        // autocommit is turned on
+        // $this->commit();
     }
 
     protected function getDocumentId($resourceName, $resourceId)

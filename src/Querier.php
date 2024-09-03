@@ -78,6 +78,7 @@ class Querier extends AbstractQuerier
 
         $uf = [];
         $searchFields = $this->getSearchFields();
+        $searchFieldMapByFacetField = [];
         foreach ($searchFields as $name => $searchField) {
             $textFields = $searchField->textFields();
             if (!empty($textFields)) {

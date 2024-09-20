@@ -191,12 +191,15 @@ class Querier extends AbstractQuerier
             }
         }
 
+        $hasDateRangeFilter = false;
         $dateRangeFilters = $query->getDateRangeFilters();
         foreach ($dateRangeFilters as $name => $filterValues) {
             foreach ($filterValues as $filterValue) {
                 $start = $filterValue['start'] ? $filterValue['start'] : '*';
                 $end = $filterValue['end'] ? $filterValue['end'] : '*';
-                $solrQuery->addFilterQuery("$name:[$start TO $end]");
+                $dateRangeFilterQuery = "{$name}:[{$start} TO {$end}]";
+                $solrQuery->addFilterQuery($dateRangeFilterQuery);
+                $hasDateRangeFilter = true;
             }
         }
 
@@ -299,6 +302,31 @@ class Querier extends AbstractQuerier
 
         if (!empty($solrResponse['stats']['stats_fields'])) {
             foreach ($solrResponse['stats']['stats_fields'] as $name => $value) {
+                $totalMin = $value["min"];
+                $totalMax = $value["max"];
+                // If a date range filter has been set, run the query again without the filter to get the total possible date range
+                if ($hasDateRangeFilter) {
+                    $solrQuery->removeFilterQuery($dateRangeFilterQuery);
+                    $solrQuery->setRows(0);
+                    $solrQuery->setOmitHeader(true);
+                    $solrQuery->setFacet(false);
+                    $solrQuery->setGroup(false);
+                    try {
+                        $logger->debug(sprintf('Solr query params: %s', $solrQuery->toString()));
+                        $datelessSolrQueryResponse = $client->query($solrQuery);
+                    } catch (SolrClientException $e) {
+                        throw new QuerierException($e->getMessage(), $e->getCode(), $e);
+                    }
+                    $datelessSolrResponse = $datelessSolrQueryResponse->getResponse();
+                    if (!empty($datelessSolrResponse['stats']['stats_fields'])) {
+                        foreach ($datelessSolrResponse['stats']['stats_fields'] as $datelessName => $datelessValue) {
+                            $totalMin = $datelessValue["min"];
+                            $totalMax = $datelessValue["max"];
+                        }
+                    }
+                }
+                $value["totalMin"] = $totalMin;
+                $value["totalMax"] = $totalMax;
                 $response->addDateFacetStat($value);
             }
         }

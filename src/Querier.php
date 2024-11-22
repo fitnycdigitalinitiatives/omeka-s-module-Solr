@@ -61,6 +61,7 @@ class Querier extends AbstractQuerier
         $resource_name_field = $solrNodeSettings['resource_name_field'];
         $sites_field = $solrNodeSettings['sites_field'];
         $is_public_field = $solrNodeSettings['is_public_field'];
+        $groups_field = $solrNodeSettings['groups_field'];
         $highlightSettings = $solrNodeSettings['highlight'] ?? [];
         $highlighting = $highlightSettings['highlighting'] ?? false;
         $highlightQueryParts = [];
@@ -126,8 +127,19 @@ class Querier extends AbstractQuerier
 
         $isPublic = $query->getIsPublic();
         if (isset($isPublic)) {
-            $fq = sprintf('%s:%s', $is_public_field, $isPublic ? 'true' : 'false');
-            $solrQuery->addFilterQuery($fq);
+            if ($isPublic) {
+                $fq = sprintf('%s:%s', $is_public_field, 'true');
+                $groups = $query->getGroups();
+                if (isset($groups)) {
+                    foreach ($groups as $group) {
+                        $fq = sprintf('%s OR %s:%s', $fq, $groups_field, $group);
+                    }
+                }
+                $solrQuery->addFilterQuery($fq);
+            } else {
+                $fq = sprintf('%s:%s', $is_public_field, 'false');
+                $solrQuery->addFilterQuery($fq);
+            }
         }
 
         $facetFields = $query->getFacetFields();
@@ -275,7 +287,7 @@ class Querier extends AbstractQuerier
             $logger->debug(sprintf('Solr query params: %s', $solrQuery->toString()));
             $solrQueryResponse = $client->query($solrQuery);
         } catch (SolrClientException $e) {
-            throw new QuerierException($e->getMessage(), $e->getCode(), $e);
+            throw new QuerierException($e->getMessage(), $e->getCode(), $e->getPrevious());
         }
         $solrResponse = $solrQueryResponse->getResponse();
 
@@ -315,7 +327,7 @@ class Querier extends AbstractQuerier
                         $logger->debug(sprintf('Solr query params: %s', $solrQuery->toString()));
                         $datelessSolrQueryResponse = $client->query($solrQuery);
                     } catch (SolrClientException $e) {
-                        throw new QuerierException($e->getMessage(), $e->getCode(), $e);
+                        throw new QuerierException($e->getMessage(), $e->getCode(), $e->getPrevious());
                     }
                     $datelessSolrResponse = $datelessSolrQueryResponse->getResponse();
                     if (!empty($datelessSolrResponse['stats']['stats_fields'])) {

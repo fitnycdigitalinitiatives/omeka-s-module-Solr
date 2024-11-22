@@ -98,6 +98,7 @@ class Indexer extends AbstractIndexer
         $valueExtractorManager = $serviceLocator->get('Solr\ValueExtractorManager');
         $transformationManager = $serviceLocator->get('Solr\TransformationManager');
         $entityManager = $serviceLocator->get('Omeka\EntityManager');
+        $controllerPlugins = $serviceLocator->get('ControllerPluginManager');
 
         $resource = $api->read($resource->getResourceName(), $resource->getId())->getContent();
 
@@ -141,6 +142,17 @@ class Indexer extends AbstractIndexer
         $is_public_field = $solrNodeSettings['is_public_field'];
         if ($is_public_field) {
             $document->addField($is_public_field, $resource->isPublic());
+        }
+
+        $groups_field = $solrNodeSettings['groups_field'];
+        if ($groups_field) {
+            if ($controllerPlugins->has('listGroups')) {
+                $listGroups = $controllerPlugins->get('listGroups');
+                $groups_ids = $listGroups($resource, 'id');
+                foreach ($groups_ids as $groups_id) {
+                    $document->addField($groups_field, $groups_id);
+                }
+            }
         }
 
         $solrMappings = $api->search('solr_mappings', [

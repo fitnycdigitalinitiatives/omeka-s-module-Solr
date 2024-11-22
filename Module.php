@@ -140,9 +140,11 @@ class Module extends AbstractModule
         $connection->executeQuery($sql, [json_encode($defaultSettings)]);
     }
 
-    public function upgrade($oldVersion, $newVersion,
-        ServiceLocatorInterface $serviceLocator)
-    {
+    public function upgrade(
+        $oldVersion,
+        $newVersion,
+        ServiceLocatorInterface $serviceLocator
+    ) {
         $translator = $serviceLocator->get('MvcTranslator');
         $connection = $serviceLocator->get('Omeka\Connection');
 
@@ -171,8 +173,10 @@ class Module extends AbstractModule
                   AND TABLE_NAME = ?
                   AND CONSTRAINT_TYPE = ?
             ';
-            $constraintName = $connection->fetchColumn($sql,
-                [$connection->getDatabase(), 'solr_field', 'FOREIGN KEY']);
+            $constraintName = $connection->fetchColumn(
+                $sql,
+                [$connection->getDatabase(), 'solr_field', 'FOREIGN KEY']
+            );
 
             $connection->exec('
                 ALTER TABLE `solr_field`
@@ -377,6 +381,7 @@ class Module extends AbstractModule
             'resource_name_field' => 'resource_name_s',
             'sites_field' => 'sites_id_is',
             'is_public_field' => 'is_public_b',
+            'groups_field' => 'groups_id_is',
         ];
     }
 }

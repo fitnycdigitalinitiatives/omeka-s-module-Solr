@@ -91,6 +91,28 @@ class SolrNodeForm extends Form implements TranslatorAwareInterface
         ]);
 
         $clientSettingsFieldset->add([
+            'name' => 'solr_ocr_path',
+            'type' => 'Text',
+            'options' => [
+                'label' => 'Solr OCR Index Path',
+            ],
+            'attributes' => [
+                'id' => 'solr_ocr_path',
+            ],
+        ]);
+        $clientSettingsFieldset->add([
+            'name' => 'solr_ocr_connection',
+            'type' => 'Checkbox',
+            'options' => [
+                'label' => 'Activate connection to Solr for OCR full-text search/indexing',
+                // @translate
+            ],
+            'attributes' => [
+                'id' => 'solr_ocr_connection',
+            ],
+        ]);
+
+        $clientSettingsFieldset->add([
             'name' => 'login',
             'type' => 'Text',
             'options' => [

@@ -54,36 +54,36 @@
                         <ul class="actions">
                             <li>
                                 <?php
-                                    echo $node->link('', 'edit', [
-                                        'class' => 'o-icon-edit',
-                                        'title' => $this->translate('Edit'),
-                                    ]);
+                                echo $node->link('', 'edit', [
+                                    'class' => 'o-icon-edit',
+                                    'title' => $this->translate('Edit'),
+                                ]);
                                 ?>
                             </li>
                             <li>
                                 <?php
-                                    $href = $node->mappingUrl();
-                                    echo $this->hyperlink('', $href, [
-                                        'class' => 'o-icon- fa fa-database',
-                                        'title' => $this->translate('Configure indexation fields'),
-                                    ]);
+                                $href = $node->mappingUrl();
+                                echo $this->hyperlink('', $href, [
+                                    'class' => 'o-icon- fa fa-database',
+                                    'title' => $this->translate('Configure indexation fields'),
+                                ]);
                                 ?>
                             </li>
                             <li>
                                 <?php
-                                    $href = $node->fieldsUrl();
-                                    echo $this->hyperlink('', $href, [
-                                        'class' => 'o-icon-search',
-                                        'title' => $this->translate('Configure search fields'),
-                                    ]);
+                                $href = $node->fieldsUrl();
+                                echo $this->hyperlink('', $href, [
+                                    'class' => 'o-icon-search',
+                                    'title' => $this->translate('Configure search fields'),
+                                ]);
                                 ?>
                             </li>
                             <li>
                                 <a href="#"
-                                data-sidebar-content-url="<?php echo $escape($node->url('delete-confirm')); ?>"
-                                class="o-icon-delete sidebar-content"
-                                aria-label="<?php echo $escape($this->translate('Delete')); ?>"
-                                title="<?php echo $escape($this->translate('Delete')); ?>"></a>
+                                    data-sidebar-content-url="<?php echo $escape($node->url('delete-confirm')); ?>"
+                                    class="o-icon-delete sidebar-content"
+                                    aria-label="<?php echo $escape($this->translate('Delete')); ?>"
+                                    title="<?php echo $escape($this->translate('Delete')); ?>"></a>
                             </li>
                         </ul>
                     </td>

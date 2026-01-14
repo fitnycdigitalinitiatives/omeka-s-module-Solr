@@ -67,6 +67,7 @@ class Querier extends AbstractQuerier
         $highlightQueryParts = [];
 
         $solrQuery = new SolrQuery;
+        $solrQuery->setOmitHeader(true);
         $solrQuery->setParam('defType', 'edismax');
 
         if (!empty($solrNodeSettings['qf'])) {
@@ -142,9 +143,15 @@ class Querier extends AbstractQuerier
             }
         }
 
+        $facetStatsEnabled = $query->getFacetStatsEnabled();
+
         $facetFields = $query->getFacetFields();
         if (!empty($facetFields)) {
             $solrQuery->setFacet(true);
+            $solrQuery->setFacetMinCount(1);
+            if ($facetStatsEnabled) {
+                $solrQuery->setStats(true);
+            }
             foreach ($facetFields as $facetField) {
                 $searchField = $this->getSearchField($facetField);
                 if (!$searchField) {
@@ -156,12 +163,29 @@ class Querier extends AbstractQuerier
                 }
 
                 $solrQuery->addFacetField($solrFacetField);
+                if ($facetStatsEnabled) {
+                    $solrQuery->addStatsField('{!cardinality=1}' . $solrFacetField);
+                }
             }
         }
 
         $facetLimit = $query->getFacetLimit();
         if ($facetLimit) {
             $solrQuery->setFacetLimit($facetLimit);
+        }
+
+        $facet_offset = $query->getFacetOffset();
+        if (isset($facet_offset)) {
+            $solrQuery->setFacetOffset($facet_offset);
+        }
+
+        $facetSort = $query->getFacetSort();
+        if (isset($facetSort)) {
+            if ($facetSort == "index") {
+                $solrQuery->setFacetSort(SolrQuery::FACET_SORT_INDEX);
+            } elseif ($facetSort == "count") {
+                $solrQuery->setFacetSort(SolrQuery::FACET_SORT_COUNT);
+            }
         }
 
         $facetFilters = $query->getFacetFilters();
@@ -215,12 +239,10 @@ class Querier extends AbstractQuerier
             }
         }
 
-        $statFields = $query->getStatFields();
-        if (!empty($statFields)) {
+        $dateFacetStatField = $query->getDateFacetStatField();
+        if (!empty($dateFacetStatField)) {
             $solrQuery->setStats(true);
-            foreach ($statFields as $statField) {
-                $solrQuery->addStatsField($statField);
-            }
+            $solrQuery->addStatsField($dateFacetStatField);
         }
 
         if ($highlighting) {
@@ -275,7 +297,7 @@ class Querier extends AbstractQuerier
             $solrQuery->addSortField($sortField, $sortOrder);
         }
 
-        if ($limit = $query->getLimit()) {
+        if (is_numeric($limit = $query->getLimit())) {
             $solrQuery->setGroupLimit($limit);
         }
 
@@ -295,53 +317,66 @@ class Querier extends AbstractQuerier
         $response->setTotalResults($solrResponse['grouped'][$resource_name_field]['matches']);
         foreach ($solrResponse['grouped'][$resource_name_field]['groups'] as $group) {
             $response->setResourceTotalResults($group['groupValue'], $group['doclist']['numFound']);
-            foreach ($group['doclist']['docs'] as $doc) {
-                [, $resourceId] = explode(':', $doc['id']);
-                $response->addResult($group['groupValue'], ['id' => $resourceId]);
+            if ($group['doclist']['docs']) {
+                foreach ($group['doclist']['docs'] as $doc) {
+                    [, $resourceId] = explode(':', $doc['id']);
+                    $response->addResult($group['groupValue'], ['id' => $resourceId]);
+                }
             }
         }
 
         if (!empty($solrResponse['facet_counts']['facet_fields'])) {
             foreach ($solrResponse['facet_counts']['facet_fields'] as $name => $values) {
                 foreach ($values as $value => $count) {
-                    if ($count > 0) {
-                        $searchField = $searchFieldMapByFacetField[$name];
-                        $response->addFacetCount($searchField->name(), $value, $count);
-                    }
+                    $searchField = $searchFieldMapByFacetField[$name];
+                    $response->addFacetCount($searchField->name(), $value, $count);
                 }
             }
         }
 
-        if (!empty($solrResponse['stats']['stats_fields'])) {
-            foreach ($solrResponse['stats']['stats_fields'] as $name => $value) {
-                $totalMin = $value["min"];
-                $totalMax = $value["max"];
-                // If a date range filter has been set, run the query again without the filter to get the total possible date range
-                if ($hasDateRangeFilter) {
-                    $solrQuery->removeFilterQuery($dateRangeFilterQuery);
-                    $solrQuery->setRows(0);
-                    $solrQuery->setOmitHeader(true);
-                    $solrQuery->setFacet(false);
-                    $solrQuery->setGroup(false);
-                    try {
-                        $logger->debug(sprintf('Solr query params: %s', $solrQuery->toString()));
-                        $datelessSolrQueryResponse = $client->query($solrQuery);
-                    } catch (SolrClientException $e) {
-                        throw new QuerierException($e->getMessage(), $e->getCode(), $e->getPrevious());
-                    }
-                    $datelessSolrResponse = $datelessSolrQueryResponse->getResponse();
-                    if (!empty($datelessSolrResponse['stats']['stats_fields'])) {
-                        foreach ($datelessSolrResponse['stats']['stats_fields'] as $datelessName => $datelessValue) {
-                            $totalMin = $datelessValue["min"];
-                            $totalMax = $datelessValue["max"];
-                        }
+        if ($dateFacetStatField && (!empty($solrResponse['stats']['stats_fields'][$dateFacetStatField]))) {
+            $dateFacetStats = $solrResponse['stats']['stats_fields'][$dateFacetStatField];
+            $totalMin = $dateFacetStats["min"];
+            $totalMax = $dateFacetStats["max"];
+            // If a date range filter has been set, run the query again without the filter to get the total possible date range
+            if ($hasDateRangeFilter) {
+                $solrQuery->removeFilterQuery($dateRangeFilterQuery);
+                $solrQuery->setRows(0);
+                $solrQuery->setOmitHeader(true);
+                $solrQuery->setFacet(false);
+                $solrQuery->setGroup(false);
+                foreach ($solrQuery->getStatsFields() as $statsField) {
+                    if ($statsField != $dateFacetStatField) {
+                        $solrQuery->removeStatsField($statsField);
                     }
                 }
-                $value["totalMin"] = $totalMin;
-                $value["totalMax"] = $totalMax;
-                $response->addDateFacetStat($value);
+                try {
+                    $logger->debug(sprintf('Solr query params: %s', $solrQuery->toString()));
+                    $datelessSolrQueryResponse = $client->query($solrQuery);
+                } catch (SolrClientException $e) {
+                    throw new QuerierException($e->getMessage(), $e->getCode(), $e->getPrevious());
+                }
+                $datelessSolrResponse = $datelessSolrQueryResponse->getResponse();
+                if (!empty($datelessSolrResponse['stats']['stats_fields'][$dateFacetStatField])) {
+                    $totalMin = $datelessSolrResponse['stats']['stats_fields'][$dateFacetStatField]["min"];
+                    $totalMax = $datelessSolrResponse['stats']['stats_fields'][$dateFacetStatField]["max"];
+                }
+            }
+            $dateFacetStats["totalMin"] = $totalMin;
+            $dateFacetStats["totalMax"] = $totalMax;
+            $response->addDateFacetStat($dateFacetStats);
+        }
+
+        if ($facetStatsEnabled && (!empty($solrResponse['stats']['stats_fields']))) {
+            foreach ($solrResponse['stats']['stats_fields'] as $this_stats_field => $stats_value) {
+                if (($this_stats_field != $dateFacetStatField) && isset($stats_value['cardinality'])) {
+                    $searchField = $searchFieldMapByFacetField[$this_stats_field];
+                    $response->addFacetPagination($searchField->name(), $this_stats_field, $facetLimit, $stats_value['cardinality'], 1, 'count');
+                }
             }
         }
+
+
 
         return $response;
     }
